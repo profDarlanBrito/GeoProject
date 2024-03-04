@@ -1,6 +1,7 @@
+from scipy.spatial.transform import Rotation
+from numpy import ndarray
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.spatial.transform import Rotation
 import pyvista as pv
 from sympy import symbols, Eq, solve
 from sympy.geometry import Circle, Point3D, Plane
@@ -12,7 +13,7 @@ def print_hi(name):
     print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
 
 
-def plot_circle(radius: float, resolution: float, ax=None):
+def plot_circle(radius: float, resolution: int, ax=None):
     # Generate points along the circumference of the circle
     theta = np.linspace(0, 2 * np.pi, resolution)
     x = radius * np.cos(theta)
@@ -192,12 +193,39 @@ def find_normal_vector(point1, point2, point3):
     return cross_vec / np.linalg.norm(cross_vec)
 
 
+def compute_area_normal_hemisphere(c0: ndarray, p0: ndarray, n: ndarray, s_normal: ndarray, R: float) -> float:
+    """
+    Args:
+        c0 (ndarray): center of sphere
+        p0 (ndarray): arbitrary point on plane
+        n (ndarray): normal vector of plane
+        s_normal (ndarray): normal vector of sphere  
+        R (float): radius of sphere
+
+    Returns:
+        float: area of sphere
+    """
+
+    if s_normal @ n / np.linalg.norm(s_normal) / np.linalg.norm(n) != -1:
+        return 0.0
+
+    rho: float = (c0 - p0) @ n / np.linalg.norm(n)
+    r_2: float = R**2 - rho**2
+
+    if rho >= 0:
+        return 2 * np.pi * np.sqrt(r_2) * (R - rho) if r_2 > 0 else 0.0
+    else:
+        return 2 * np.pi * R**2
+
+
 def get_viewed_area():
     # Create some sample meshes
-    pos_mesh = np.array([1, 0, 0])
+    pos_mesh = np.array([0, 0, 0])
     r_mesh = 1
 
-    mesh = pv.Sphere(radius=r_mesh, center=pos_mesh)
+    cam_pos = (5.0, 0.0, 0.0)
+    sphe_direction = np.array(cam_pos) - pos_mesh
+    mesh = pv.Sphere(radius=r_mesh, center=pos_mesh, direction=sphe_direction, phi_resolution=10, end_phi=90)
     mesh1 = pv.Box(bounds=(-5.0, -4.0, -1.0, 1.0, -1.0, 1.0))
 
     # Create a plotter
@@ -219,15 +247,6 @@ def get_viewed_area():
     cylinder = pv.CylinderStructured(center=pos_mesh, direction=cy_direction, radius=r_mesh, height=cy_hight,
                                      theta_resolution=n_resolution, z_resolution=z_resolution)
 
-    # Create the hemispheres and add them to the faces of the cylinder
-    for cell in get_geometric_objects_cell(cylinder):
-        pos_cell = cell.center
-        points_cell = cell.points[:3]
-        norm_vec = find_normal_vector(*points_cell)
-
-        sub_mesh = pv.Sphere(radius=spheres_radius, center=pos_cell, direction=norm_vec, end_phi=90)
-        plotter.add_mesh(sub_mesh)
-
     # cylinder.plot(show_edges=True)
     # Add the meshes to the plotter
     # plotter.add_mesh(mesh1)
@@ -236,7 +255,7 @@ def get_viewed_area():
 
     # Set camera position and orientation (optional)
     plotter.camera.clipping_range = (1e-4, 1)
-    # plotter.camera_position = [(10, 0, 0), (0, 0, 0), (0, 0, 0)]
+    plotter.camera_position = [cam_pos, (0, 0, 0), (0, 0, 0)]
 
     points = np.array([[2.0, 0.0, 0.0], [2.0, 2.0, 0.0],
                        [2.0, 0.0, 2.0], [2.0, 2.0, 2.0]])
@@ -247,27 +266,33 @@ def get_viewed_area():
     frustum = plotter.camera.view_frustum()
     plotter.add_mesh(frustum, style="wireframe")
 
+    # Generate a plane
     direction = np.array(plotter.camera.focal_point) - np.array(plotter.camera.position)
     direction /= np.linalg.norm(direction)
 
-    A, B, C = direction
+    t = np.linalg.norm(pos_mesh - cam_pos) - r_mesh + 0.11
+    v = pos_mesh - np.array(cam_pos)
+    v /= np.linalg.norm(v)
+    dot_plane = np.array([cam_pos[0] + t * v[0], cam_pos[1] + t * v[1], cam_pos[1] + t * v[2]])
 
-    direction = -direction
-
-    dot_plane = np.array([0.5, 0, 0])
-
-    D = -np.dot(direction, dot_plane)
-
-    print(f'{A}x + {B}y + {C}z + {D} = 0')
     plane = pv.Plane(dot_plane, direction, i_size=5, j_size=5)
-    # mesh.plot(show_edges=True)
     plotter.add_mesh(plane, color="red", opacity=0.2)
 
-    p = np.dot(direction, pos_mesh - dot_plane) / np.linalg.norm(direction)
-    print(f'{p=}')
+    area_spheres = 0.0
 
-    A = 2 * np.pi * r_mesh * (r_mesh - p)
-    print(f'{A=}')
+    # Create the hemispheres and add them to the faces of the cylinder
+    for cell in get_geometric_objects_cell(cylinder):
+        pos_cell = cell.center
+        points_cell = cell.points[:3]
+        norm_vec = find_normal_vector(*points_cell)
+
+        sub_mesh = pv.Sphere(radius=spheres_radius, center=pos_cell, direction=norm_vec, phi_resolution=10, end_phi=90)
+        plotter.add_mesh(sub_mesh, show_edges=True)
+
+        area_spheres += compute_area_normal_hemisphere(pos_cell, dot_plane, direction, norm_vec, spheres_radius)
+
+    # area_spheres = compute_area_normal_hemisphere(pos_mesh, dot_plane, direction, sphe_direction, r_mesh)
+    print(f'{area_spheres=}')
 
     bounds_mesh = mesh.bounds
     # Get the bounds of the meshes

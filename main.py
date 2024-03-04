@@ -2,6 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation
 import pyvista as pv
+from sympy import symbols, Eq, solve
+from sympy.geometry import Circle, Point3D, Plane
+import math
 
 
 def print_hi(name):
@@ -205,15 +208,16 @@ def get_viewed_area():
     n_resolution = 36
 
     # Calculate the length of the lateral surface of an inscribed cylinder
-    h = np.cos(np.pi/n_resolution) * r_mesh
-    l = np.sqrt(np.abs(4*h**2 - 4*r_mesh**2))
+    h = np.cos(np.pi / n_resolution) * r_mesh
+    l = np.sqrt(np.abs(4 * h ** 2 - 4 * r_mesh ** 2))
 
     # Find the radius of the spheres
     z_resolution = int(np.ceil(cy_hight / l))
     h = cy_hight / z_resolution
     spheres_radius = np.max([l, h]) / 2
 
-    cylinder = pv.CylinderStructured(center=pos_mesh, direction=cy_direction, radius=r_mesh,height=cy_hight, theta_resolution=n_resolution, z_resolution=z_resolution)
+    cylinder = pv.CylinderStructured(center=pos_mesh, direction=cy_direction, radius=r_mesh, height=cy_hight,
+                                     theta_resolution=n_resolution, z_resolution=z_resolution)
 
     # Create the hemispheres and add them to the faces of the cylinder
     for cell in get_geometric_objects_cell(cylinder):
@@ -235,7 +239,7 @@ def get_viewed_area():
     # plotter.camera_position = [(10, 0, 0), (0, 0, 0), (0, 0, 0)]
 
     points = np.array([[2.0, 0.0, 0.0], [2.0, 2.0, 0.0],
-                      [2.0, 0.0, 2.0], [2.0, 2.0, 2.0]])
+                       [2.0, 0.0, 2.0], [2.0, 2.0, 2.0]])
     point_cloud = pv.PolyData(points)
     plotter.add_mesh(point_cloud)
 
@@ -292,10 +296,10 @@ def get_viewed_area():
         c_even = 0
         for j in range(6):
             if j % 2:
-                points1[c*2, c_even] = bounds_line[j]
+                points1[c * 2, c_even] = bounds_line[j]
                 c_even += 1
             else:
-                points1[(c*2)+1, c_odd] = bounds_line[j]
+                points1[(c * 2) + 1, c_odd] = bounds_line[j]
                 c_odd += 1
         c += 1
 
@@ -327,6 +331,115 @@ def create_mesh_from_points(points):
     return mesh
 
 
+# Define variables
+x, y, z, t = symbols('x y z t')
+
+
+def get_line_of_intersection_two_planes(pi1, pi2):
+    # Define the equations of the planes
+    plane1 = Eq(pi1[0] * x + pi1[1] * y + pi1[2] * z, -pi1[3])
+    plane2 = Eq(pi2[0] * x + pi2[1] * y + pi2[2] * z, -pi2[3])
+
+    # Solve the system of equations to find the direction vector
+    direction_vector = np.cross(pi1[:3], pi2[:3])
+
+    # Find a point on the line of intersection (by setting one variable to zero)
+    # Here we set z = 0, you can choose any other variable as well
+    point = solve((plane1, plane2))
+    point[x] = point[x].subs(z, 0)
+    point[y] = point[y].subs(z, 0)
+
+    # Formulate the parametric equation of the line
+    parametric_equation = [point[x] + direction_vector[0] * t,
+                           point[y] + direction_vector[1] * t,
+                           direction_vector[2] * t]
+    return parametric_equation
+
+
+def get_intersection_points_line_sphere(line_parametric_eq, sphere_eq):
+    # Extract components of the line's parametric equations
+    x_expr, y_expr, z_expr = line_parametric_eq
+
+    # Extract components of the sphere equation
+    x_sphere, y_sphere, z_sphere, r = sphere_eq
+
+    # Substitute the parametric equations of the line into the equation of the sphere
+    sphere_eq_subs = Eq((x_expr - x_sphere) ** 2 + (y_expr - y_sphere) ** 2 + (z_expr - z_sphere) ** 2, r ** 2)
+
+    # Solve for t to find the point(s) of intersection
+    solutions = solve(sphere_eq_subs, t)
+
+    # Evaluate the parametric equations at the intersection point(s)
+    intersection_points = np.empty([0, 3])
+    for sol in solutions:
+        x_inter = x_expr.subs(t, sol)
+        y_inter = y_expr.subs(t, sol)
+        z_inter = z_expr.subs(t, sol)
+        intersection_points = np.row_stack((intersection_points, (float(x_inter), float(y_inter), float(z_inter))))
+
+    return intersection_points
+
+
+def spherical_distance(p1, p2):
+    """
+    Calculate the spherical distance between two points on a unit sphere.
+    """
+    # Convert spherical coordinates to radians
+    lon1, lat1 = math.radians(p1[0]), math.radians(p1[1])
+    lon2, lat2 = math.radians(p2[0]), math.radians(p2[1])
+
+    # Calculate spherical distance using haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    distance = c
+
+    return distance
+
+
+def spherical_triangle_area(p1, p2, p3):
+    """
+    Calculate the area of a spherical triangle formed by three points on a unit sphere.
+    """
+    # Calculate the lengths of the three sides of the spherical triangle
+    side1 = spherical_distance(p1, p2)
+    side2 = spherical_distance(p2, p3)
+    side3 = spherical_distance(p3, p1)
+
+    # Calculate the semi-perimeter
+    s = (side1 + side2 + side3) / 2
+
+    # Calculate the spherical excess using Heron's formula
+    excess = 4 * math.atan(
+        math.sqrt(math.tan(s / 2) * math.tan((s - side1) / 2) * math.tan((s - side2) / 2) * math.tan((s - side3) / 2)))
+
+    # The area of the spherical triangle is equal to its excess angle
+    area = excess
+
+    return area
+
+
+def plane_circle_intersection(plane_eq, circle):
+    # Extract components of the plane equation
+    a, b, c, d = plane_eq
+
+    # Define the plane
+    plane = Plane(Point3D(0, 0, -d/c), normal_vector=(a, b, c))
+
+    # Project the circle onto the plane
+    projected_circle = circle.projection(plane)
+
+    # Find the intersection points between the projected circle and the plane
+    intersection_points_ci = projected_circle.intersection(plane)
+
+    return intersection_points_ci
+
+
+def get_viewed_area_from():
+    print('Starting viewed area computing')
+
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     # ax = plot_circle(1.0, 500)
@@ -349,5 +462,25 @@ if __name__ == '__main__':
     #     rot_points = rot.apply(Points)
     #     ax.scatter(rot_points[:, 0], rot_points[:, 1], rot_points[:, 2])
     # plt.show()
-    get_viewed_area()  # Only function used with pyvista
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    # get_viewed_area()  # Only function used with pyvista
+
+    # See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    pi1gl = np.array([2.0, 4.0, -1.0, 1.0])
+    pi2gl = np.array([-1.0, 2.0, 1.0, 2.0])
+    parametric_equation = get_line_of_intersection_two_planes(pi1gl, pi2gl)
+    print(parametric_equation)
+    xl = parametric_equation[0].subs(t, 0.0)
+    yl = parametric_equation[1].subs(t, 0.0)
+    zl = 0.0
+    sphere_eq = (xl, yl, zl, 2)
+    # Find intersection point(s)
+    intersection_points = get_intersection_points_line_sphere(parametric_equation, sphere_eq)
+
+    # Display intersection point(s)
+    print("Intersection point(s) with the sphere:")
+    for point in intersection_points:
+        print(point)
+
+    distance = np.linalg.norm(intersection_points[0] - intersection_points[1])
+
+    print(distance)

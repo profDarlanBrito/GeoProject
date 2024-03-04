@@ -177,6 +177,18 @@ def compute_orientation(normal):
     return rot
 
 
+def get_geometric_objects_cell(geometric_objects):
+    for i in range(geometric_objects.n_cells):
+        yield geometric_objects.get_cell(i)
+
+
+def find_normal_vector(point1, point2, point3):
+    vec1 = np.array(point2) - np.array(point1)
+    vec2 = np.array(point3) - np.array(point1)
+    cross_vec = np.cross(vec1, vec2)
+    return cross_vec / np.linalg.norm(cross_vec)
+
+
 def get_viewed_area():
     # Create some sample meshes
     pos_mesh = np.array([1, 0, 0])
@@ -189,15 +201,30 @@ def get_viewed_area():
     plotter = pv.Plotter()
 
     cy_direction = np.array([0, 0, 1])
-    cy_hight = 5
+    cy_hight = 0.875
     n_resolution = 36
-    h = np.sin(180/n_resolution) * r_mesh
+
+    # Calculate the length of the lateral surface of an inscribed cylinder
+    h = np.cos(np.pi/n_resolution) * r_mesh
     l = np.sqrt(np.abs(4*h**2 - 4*r_mesh**2))
 
+    # Find the radius of the spheres
     z_resolution = int(np.ceil(cy_hight / l))
+    h = cy_hight / z_resolution
+    spheres_radius = np.max([l, h]) / 2
 
-    cylinder = pv.CylinderStructured(center=pos_mesh, direction=cy_direction, radius=r_mesh, height=cy_hight, theta_resolution=n_resolution, z_resolution=z_resolution)
-    cylinder.plot(show_edges=True)
+    cylinder = pv.CylinderStructured(center=pos_mesh, direction=cy_direction, radius=r_mesh,height=cy_hight, theta_resolution=n_resolution, z_resolution=z_resolution)
+
+    # Create the hemispheres and add them to the faces of the cylinder
+    for cell in get_geometric_objects_cell(cylinder):
+        pos_cell = cell.center
+        points_cell = cell.points[:3]
+        norm_vec = find_normal_vector(*points_cell)
+
+        sub_mesh = pv.Sphere(radius=spheres_radius, center=pos_cell, direction=norm_vec, end_phi=90)
+        plotter.add_mesh(sub_mesh)
+
+    # cylinder.plot(show_edges=True)
     # Add the meshes to the plotter
     # plotter.add_mesh(mesh1)
     # plotter.add_mesh(mesh)
@@ -216,11 +243,8 @@ def get_viewed_area():
     frustum = plotter.camera.view_frustum()
     plotter.add_mesh(frustum, style="wireframe")
 
-    direction = np.array(plotter.camera.focal_point) - \
-        np.array(plotter.camera.position)
+    direction = np.array(plotter.camera.focal_point) - np.array(plotter.camera.position)
     direction /= np.linalg.norm(direction)
-
-    focal_point = np.array(plotter.camera.focal_point)
 
     A, B, C = direction
 
@@ -230,9 +254,9 @@ def get_viewed_area():
 
     D = -np.dot(direction, dot_plane)
 
-    print(f"{A}x + {B}y + {C}z + {D} = 0")
+    print(f'{A}x + {B}y + {C}z + {D} = 0')
     plane = pv.Plane(dot_plane, direction, i_size=5, j_size=5)
-    mesh.plot(show_edges=True)
+    # mesh.plot(show_edges=True)
     plotter.add_mesh(plane, color="red", opacity=0.2)
 
     p = np.dot(direction, pos_mesh - dot_plane) / np.linalg.norm(direction)

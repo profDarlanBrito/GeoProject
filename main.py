@@ -8,7 +8,7 @@ from sympy.geometry import Circle, Point3D, Plane
 from sympy.matrices import Matrix
 from sympy.solvers.solveset import linsolve
 import math
-
+from spherical_geometry.polygon import SphericalPolygon
 
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
@@ -247,7 +247,7 @@ def get_viewed_area():
     pos_mesh = np.array([0, 0, 0])
     r_mesh = 2
 
-    cam_pos = (5.0, 0.0, 0.0)
+    cam_pos = (5.1, 0.0, 0.0)
     sphe_direction = np.array(cam_pos) - pos_mesh
     mesh = pv.Sphere(radius=r_mesh, center=pos_mesh, direction=sphe_direction, phi_resolution=10, end_phi=90)
     mesh1 = pv.Box(bounds=(-5.0, -4.0, -1.0, 1.0, -1.0, 1.0))
@@ -367,6 +367,10 @@ def get_viewed_area():
             if not any(np.array_equal(p, point) for point in A_set_point):
                 B_set_point.append(p)
 
+    spherical_points = np.row_stack((A_set_point, B_set_point))
+    spherical_polygon = SphericalPolygon(spherical_points)
+    spherical_area = spherical_polygon.area()
+    print(f'{spherical_area=}')
     # Calculate the area of the sphere using 3 points
     sub_area = 0.0
     for p in A_set_point[:2]:

@@ -5,12 +5,14 @@ import numpy as np
 import pyvista as pv
 from sympy import symbols, Eq, solve
 from sympy.geometry import Circle, Point3D, Plane
+from sympy.matrices import Matrix
+from sympy.solvers.solveset import linsolve
 import math
 
 
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+    print(f"Hi, {name}")  # Press Ctrl+F8 to toggle the breakpoint.
 
 
 def plot_circle(radius: float, resolution: int, ax=None):
@@ -23,12 +25,12 @@ def plot_circle(radius: float, resolution: int, ax=None):
     # Plot the circle in 3D
     if ax is None:
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-    ax.plot(x, y, z, color='blue', linewidth=2)
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.set_title('Circle in 3D')
+        ax = fig.add_subplot(111, projection="3d")
+    ax.plot(x, y, z, color="blue", linewidth=2)
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_title("Circle in 3D")
     return ax
 
 
@@ -50,25 +52,25 @@ def plot_circle_in_plane(normal, center, radius, ax=None):
 
     # Generate points along the circumference of the circle
     theta = np.linspace(0, 2 * np.pi, 100)
-    circle_points = np.array([
-        x0 + radius * (np.cos(theta) * u[0] + np.sin(theta) * v[0]),
-        y0 + radius * (np.cos(theta) * u[1] + np.sin(theta) * v[1]),
-        z0 + radius * (np.cos(theta) * u[2] + np.sin(theta) * v[2])
-    ])
+    circle_points = np.array(
+        [
+            x0 + radius * (np.cos(theta) * u[0] + np.sin(theta) * v[0]),
+            y0 + radius * (np.cos(theta) * u[1] + np.sin(theta) * v[1]),
+            z0 + radius * (np.cos(theta) * u[2] + np.sin(theta) * v[2]),
+        ]
+    )
 
     if ax is None:
         # Plot the circle in 3D
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot(circle_points[0], circle_points[1],
-                circle_points[2], color='blue', linewidth=2)
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title('Circle in Plane with Normal Vector')
+        ax = fig.add_subplot(111, projection="3d")
+        ax.plot(circle_points[0], circle_points[1], circle_points[2], color="blue", linewidth=2)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+        ax.set_title("Circle in Plane with Normal Vector")
     else:
-        ax.plot(circle_points[0], circle_points[1],
-                circle_points[2], color='blue', linewidth=2)
+        ax.plot(circle_points[0], circle_points[1], circle_points[2], color="blue", linewidth=2)
     return ax
 
 
@@ -88,16 +90,15 @@ def plot_line(vector, point, ax):
     if ax is None:
         # Plot the line in 3D
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(x0, y0, z0, color='red', marker='-o',
-                   label='Point (x0, y0, z0)')
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title('Line in 3D')
+        ax = fig.add_subplot(111, projection="3d")
+        ax.scatter(x0, y0, z0, color="red", marker="-o", label="Point (x0, y0, z0)")
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+        ax.set_title("Line in 3D")
         ax.legend()
     else:
-        ax.plot(x, y, z, color='blue', linewidth=2)
+        ax.plot(x, y, z, color="blue", linewidth=2)
     return ax
 
 
@@ -113,30 +114,29 @@ def plot_plane_through_points(point1, point2, point3, ax=None):
     normal = np.cross(v1, v2)
 
     # Define a grid of points to plot the plane
-    xx, yy = np.meshgrid(np.linspace(x1 - 1, x3 + 1, 10),
-                         np.linspace(y1 - 1, y3 + 1, 10))
+    xx, yy = np.meshgrid(np.linspace(x1 - 1, x3 + 1, 10), np.linspace(y1 - 1, y3 + 1, 10))
     zz = (-normal[0] * (xx - x1) - normal[1] * (yy - y1)) / normal[2] + z1
 
     if ax is None:
         # Plot the plane in 3D
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+        ax = fig.add_subplot(111, projection="3d")
         ax.plot_surface(xx, yy, zz, alpha=0.5)
 
         # Plot the points
-        ax.scatter(x1, y1, z1, color='red', marker='o', label='Point 1')
-        ax.scatter(x2, y2, z2, color='green', marker='o', label='Point 2')
-        ax.scatter(x3, y3, z3, color='blue', marker='o', label='Point 3')
+        ax.scatter(x1, y1, z1, color="red", marker="o", label="Point 1")
+        ax.scatter(x2, y2, z2, color="green", marker="o", label="Point 2")
+        ax.scatter(x3, y3, z3, color="blue", marker="o", label="Point 3")
 
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title('Plane through Three Points')
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+        ax.set_title("Plane through Three Points")
         ax.legend()
     else:
-        ax.scatter(x1, y1, z1, color='red', marker='o', label='Point 1')
-        ax.scatter(x2, y2, z2, color='green', marker='o', label='Point 2')
-        ax.scatter(x3, y3, z3, color='blue', marker='o', label='Point 3')
+        ax.scatter(x1, y1, z1, color="red", marker="o", label="Point 1")
+        ax.scatter(x2, y2, z2, color="green", marker="o", label="Point 2")
+        ax.scatter(x3, y3, z3, color="blue", marker="o", label="Point 3")
     return normal, ax
 
 
@@ -160,15 +160,20 @@ def plot_hemisphere(center, radius, theta, ax=None):
     if ax is None:
         # Plot the hemisphere in 3D
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.plot_surface(x, y, z, color='blue', alpha=0.8)
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
-        ax.set_title('Hemisphere')
+        ax = fig.add_subplot(111, projection="3d")
+        ax.plot_surface(x, y, z, color="blue", alpha=0.8)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+        ax.set_title("Hemisphere")
     else:
-        ax.plot_surface(x, y, z, color='blue', alpha=0.8)
+        ax.plot_surface(x, y, z, color="blue", alpha=0.8)
     return ax, x, y, z
+
+
+def plot_plane(plotter, normal_vec, point_plane, color="red", opacity=0.2):
+    plane = pv.Plane(point_plane, normal_vec, i_size=5, j_size=5)
+    plotter.add_mesh(plane, color=color, opacity=opacity)
 
 
 def compute_orientation(normal):
@@ -199,14 +204,14 @@ def compute_area_normal_hemisphere(c0: ndarray, p0: ndarray, n: ndarray, s_norma
         c0 (ndarray): center of sphere
         p0 (ndarray): arbitrary point on plane
         n (ndarray): normal vector of plane
-        s_normal (ndarray): normal vector of sphere  
+        s_normal (ndarray): normal vector of sphere
         R (float): radius of sphere
 
     Returns:
         float: area of sphere
     """
 
-    if s_normal @ n / np.linalg.norm(s_normal) / np.linalg.norm(n) != -1:
+    if not np.isclose(s_normal @ n / np.linalg.norm(s_normal) / np.linalg.norm(n), -1):
         return 0.0
 
     rho: float = (c0 - p0) @ n / np.linalg.norm(n)
@@ -218,10 +223,29 @@ def compute_area_normal_hemisphere(c0: ndarray, p0: ndarray, n: ndarray, s_norma
         return 2 * np.pi * R**2
 
 
+def get_plane_frustum(frustum: pv.PolyData) -> list[tuple[ndarray, ndarray]]:
+
+    planes = []
+    # above_plane
+    # bellow_plane
+    # right_plane
+    # left_plane
+    # far_plane
+    # near_plane
+
+    for cell in get_geometric_objects_cell(frustum):
+        pos_cell = np.array(cell.center)
+        points_cell = cell.points[:3]
+        norm_vec = find_normal_vector(*points_cell)
+        planes.append((norm_vec, pos_cell))
+
+    return planes
+
+
 def get_viewed_area():
     # Create some sample meshes
     pos_mesh = np.array([0, 0, 0])
-    r_mesh = 1
+    r_mesh = 2
 
     cam_pos = (5.0, 0.0, 0.0)
     sphe_direction = np.array(cam_pos) - pos_mesh
@@ -237,46 +261,119 @@ def get_viewed_area():
 
     # Calculate the length of the lateral surface of an inscribed cylinder
     h = np.cos(np.pi / n_resolution) * r_mesh
-    l = np.sqrt(np.abs(4 * h ** 2 - 4 * r_mesh ** 2))
+    l = np.sqrt(np.abs(4 * h**2 - 4 * r_mesh**2))
 
     # Find the radius of the spheres
     z_resolution = int(np.ceil(cy_hight / l))
     h = cy_hight / z_resolution
     spheres_radius = np.max([l, h]) / 2
 
-    cylinder = pv.CylinderStructured(center=pos_mesh, direction=cy_direction, radius=r_mesh, height=cy_hight,
-                                     theta_resolution=n_resolution, z_resolution=z_resolution)
+    cylinder = pv.CylinderStructured(
+        center=pos_mesh,
+        direction=cy_direction,
+        radius=r_mesh,
+        height=cy_hight,
+        theta_resolution=n_resolution,
+        z_resolution=z_resolution,
+    )
 
     # cylinder.plot(show_edges=True)
     # Add the meshes to the plotter
     # plotter.add_mesh(mesh1)
-    # plotter.add_mesh(mesh)
-    plotter.add_mesh(cylinder)
+    plotter.add_mesh(mesh, show_edges=True)
+    # plotter.add_mesh(cylinder, show_edges=True)
 
     # Set camera position and orientation (optional)
     plotter.camera.clipping_range = (1e-4, 1)
     plotter.camera_position = [cam_pos, (0, 0, 0), (0, 0, 0)]
 
-    points = np.array([[2.0, 0.0, 0.0], [2.0, 2.0, 0.0],
-                       [2.0, 0.0, 2.0], [2.0, 2.0, 2.0]])
+    points = np.array([[2.0, 0.0, 0.0], [2.0, 2.0, 0.0], [2.0, 0.0, 2.0], [2.0, 2.0, 2.0]])
     point_cloud = pv.PolyData(points)
     plotter.add_mesh(point_cloud)
 
     # Get the camera's view frustum
     frustum = plotter.camera.view_frustum()
-    plotter.add_mesh(frustum, style="wireframe")
+    # plotter.add_mesh(frustum, style="wireframe")
 
     # Generate a plane
     direction = np.array(plotter.camera.focal_point) - np.array(plotter.camera.position)
     direction /= np.linalg.norm(direction)
 
-    t = np.linalg.norm(pos_mesh - cam_pos) - r_mesh + 0.11
+    u = np.linalg.norm(pos_mesh - cam_pos) - r_mesh + 0.11
     v = pos_mesh - np.array(cam_pos)
     v /= np.linalg.norm(v)
-    dot_plane = np.array([cam_pos[0] + t * v[0], cam_pos[1] + t * v[1], cam_pos[1] + t * v[2]])
+    dot_plane = np.array([cam_pos[0] + u * v[0], cam_pos[1] + u * v[1], cam_pos[1] + u * v[2]])
 
-    plane = pv.Plane(dot_plane, direction, i_size=5, j_size=5)
-    plotter.add_mesh(plane, color="red", opacity=0.2)
+    plane_frustum = get_plane_frustum(frustum)
+    plane_eq = []
+
+    # Plot the four sides of the frustum
+    for plane in plane_frustum[:4]:
+        a, b, c = plane[0]
+        d = -(plane[0] @ plane[1])
+        plane_eq.append([a, b, c, d])
+        plot_plane(plotter, *plane)
+
+
+    # Calculate the intersection between the planes of the frustum
+    parametric_equation = []
+    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[0], plane_eq[2]))  #  above_plane with left_plane
+    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[0], plane_eq[3]))  #  above_plane with right_plane
+    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[1], plane_eq[2]))  #  bellow_plane with left_plane
+    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[1], plane_eq[3]))  #  bellow_plane with right_plane
+
+    t1 = -3
+    t2 = -7
+    values = [[t1, t2], [-t1, -t2], [-t1, -t2], [t1, t2]]
+
+    # Plot the lines of the frustum
+    for line, v in zip(parametric_equation, values):
+        x1 = float(line[0].subs(t, v[0]))
+        y1 = float(line[1].subs(t, v[0]))
+        z1 = float(line[2].subs(t, v[0]))
+
+        x2 = float(line[0].subs(t, v[1]))
+        y2 = float(line[1].subs(t, v[1]))
+        z2 = float(line[2].subs(t, v[1]))
+
+        mesh_line = pv.Line([x1, y1, z1], [x2, y2, z2])
+        plotter.add_mesh(mesh_line, color="k")
+
+    # Select the points that pass through the sphere closest to the camera
+    intersection_points = []
+    for p_eq in parametric_equation:
+        intersection_points_sphere = get_intersection_points_line_sphere(p_eq, (*pos_mesh, r_mesh))
+
+        d1 = np.linalg.norm(intersection_points_sphere[0] - cam_pos)
+        d2 = np.linalg.norm(intersection_points_sphere[1] - cam_pos)
+
+        p = intersection_points_sphere[0] if d1 < d2 else intersection_points_sphere[1]
+        plotter.add_points(p, color="green", point_size=10)
+        intersection_points.append(p)
+
+    # Separate the points into two sets of points furthest away
+    A_set_point = [intersection_points[0]]
+    B_set_point = []
+    longest_index = 0
+    for i, p in enumerate(intersection_points[1:]):
+        longest_distance = 0
+
+        if np.linalg.norm(A_set_point[0] - p) > longest_distance:
+            longest_index = i + 1
+            longest_distance = np.linalg.norm(A_set_point[0] - p)
+    else:
+        A_set_point.append(intersection_points[longest_index])
+        for p in intersection_points:
+            if not any(np.array_equal(p, point) for point in A_set_point):
+                B_set_point.append(p)
+
+    # Calculate the area of the sphere using 3 points
+    sub_area = 0.0
+    for p in A_set_point[:2]:
+        sub_area += spherical_triangle_area(p, *B_set_point[:2])
+    print(f'{sub_area=}')
+
+    # plot_plane(plotter, direction, dot_plane)
 
     area_spheres = 0.0
 
@@ -287,12 +384,12 @@ def get_viewed_area():
         norm_vec = find_normal_vector(*points_cell)
 
         sub_mesh = pv.Sphere(radius=spheres_radius, center=pos_cell, direction=norm_vec, phi_resolution=10, end_phi=90)
-        plotter.add_mesh(sub_mesh, show_edges=True)
+        # plotter.add_mesh(sub_mesh, show_edges=True)
 
         area_spheres += compute_area_normal_hemisphere(pos_cell, dot_plane, direction, norm_vec, spheres_radius)
 
     # area_spheres = compute_area_normal_hemisphere(pos_mesh, dot_plane, direction, sphe_direction, r_mesh)
-    print(f'{area_spheres=}')
+    print(f"{area_spheres=}")
 
     bounds_mesh = mesh.bounds
     # Get the bounds of the meshes
@@ -337,12 +434,20 @@ def get_viewed_area():
     plotter.show()
 
     if far_clip.bounds[0] < mesh.bounds[1] < near_clip.bounds[0]:
-        print('Sphere viewed')
+        print("Sphere viewed")
 
-    viewed_area_mesh = np.mean(np.array([(bounds_mesh[0] - frustum.bounds[0]), (bounds_mesh[1] - frustum.bounds[1]),
-                                         (bounds_mesh[2] - frustum.bounds[2]
-                                          ), (bounds_mesh[3] - frustum.bounds[3]),
-                                         (bounds_mesh[4] - frustum.bounds[4]), (bounds_mesh[5] - frustum.bounds[5])]))
+    viewed_area_mesh = np.mean(
+        np.array(
+            [
+                (bounds_mesh[0] - frustum.bounds[0]),
+                (bounds_mesh[1] - frustum.bounds[1]),
+                (bounds_mesh[2] - frustum.bounds[2]),
+                (bounds_mesh[3] - frustum.bounds[3]),
+                (bounds_mesh[4] - frustum.bounds[4]),
+                (bounds_mesh[5] - frustum.bounds[5]),
+            ]
+        )
+    )
 
     # print("Viewed area of mesh1:", viewed_area_mesh1)
     print("Viewed area of mesh2:", viewed_area_mesh)
@@ -357,7 +462,7 @@ def create_mesh_from_points(points):
 
 
 # Define variables
-x, y, z, t = symbols('x y z t')
+x, y, z, t = symbols("x y z t")
 
 
 def get_line_of_intersection_two_planes(pi1, pi2):
@@ -375,9 +480,11 @@ def get_line_of_intersection_two_planes(pi1, pi2):
     point[y] = point[y].subs(z, 0)
 
     # Formulate the parametric equation of the line
-    parametric_equation = [point[x] + direction_vector[0] * t,
-                           point[y] + direction_vector[1] * t,
-                           direction_vector[2] * t]
+    parametric_equation = [
+        point[x] + direction_vector[0] * t,
+        point[y] + direction_vector[1] * t,
+        direction_vector[2] * t,
+    ]
     return parametric_equation
 
 
@@ -389,18 +496,22 @@ def get_intersection_points_line_sphere(line_parametric_eq, sphere_eq):
     x_sphere, y_sphere, z_sphere, r = sphere_eq
 
     # Substitute the parametric equations of the line into the equation of the sphere
-    sphere_eq_subs = Eq((x_expr - x_sphere) ** 2 + (y_expr - y_sphere) ** 2 + (z_expr - z_sphere) ** 2, r ** 2)
+    sphere_eq_subs = Eq((x_expr - x_sphere) ** 2 + (y_expr - y_sphere) ** 2 + (z_expr - z_sphere) ** 2, r**2)
 
     # Solve for t to find the point(s) of intersection
     solutions = solve(sphere_eq_subs, t)
 
     # Evaluate the parametric equations at the intersection point(s)
     intersection_points = np.empty([0, 3])
-    for sol in solutions:
-        x_inter = x_expr.subs(t, sol)
-        y_inter = y_expr.subs(t, sol)
-        z_inter = z_expr.subs(t, sol)
-        intersection_points = np.row_stack((intersection_points, (float(x_inter), float(y_inter), float(z_inter))))
+
+    try:
+        for sol in solutions:
+            x_inter = x_expr.subs(t, sol)
+            y_inter = y_expr.subs(t, sol)
+            z_inter = z_expr.subs(t, sol)
+            intersection_points = np.row_stack((intersection_points, (float(x_inter), float(y_inter), float(z_inter))))
+    except TypeError:
+        return []
 
     return intersection_points
 
@@ -437,7 +548,8 @@ def spherical_triangle_area(p1, p2, p3):
 
     # Calculate the spherical excess using Heron's formula
     excess = 4 * math.atan(
-        math.sqrt(math.tan(s / 2) * math.tan((s - side1) / 2) * math.tan((s - side2) / 2) * math.tan((s - side3) / 2)))
+        math.sqrt(math.tan(s / 2) * math.tan((s - side1) / 2) * math.tan((s - side2) / 2) * math.tan((s - side3) / 2))
+    )
 
     # The area of the spherical triangle is equal to its excess angle
     area = excess
@@ -450,7 +562,7 @@ def plane_circle_intersection(plane_eq, circle):
     a, b, c, d = plane_eq
 
     # Define the plane
-    plane = Plane(Point3D(0, 0, -d/c), normal_vector=(a, b, c))
+    plane = Plane(Point3D(0, 0, -d / c), normal_vector=(a, b, c))
 
     # Project the circle onto the plane
     projected_circle = circle.projection(plane)
@@ -462,11 +574,11 @@ def plane_circle_intersection(plane_eq, circle):
 
 
 def get_viewed_area_from():
-    print('Starting viewed area computing')
+    print("Starting viewed area computing")
 
 
 # Press the green button in the gutter to run the script.
-if __name__ == '__main__':
+if __name__ == "__main__":
     # ax = plot_circle(1.0, 500)
     # vector = np.array((0, 1, 1))
     # point = np.array((0, 0, 0))
@@ -476,7 +588,7 @@ if __name__ == '__main__':
     # point1 = np.array((2, 2, 3))
     # point2 = np.array((4, 5, 6))
     # point3 = np.array((7, 7, 9))
-    # get_viewed_area()
+    get_viewed_area()
     # normal, ax = plot_plane_through_points(point1, point2, point3)
     # ax = plot_circle_in_plane(normal, point1, radius, ax)
     # ax = plot_line(normal, point1, ax)

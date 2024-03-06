@@ -10,6 +10,7 @@ from sympy.solvers.solveset import linsolve
 import math
 from spherical_geometry.polygon import SphericalPolygon
 
+
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
     print(f"Hi, {name}")  # Press Ctrl+F8 to toggle the breakpoint.
@@ -242,12 +243,51 @@ def get_plane_frustum(frustum: pv.PolyData) -> list[tuple[ndarray, ndarray]]:
     return planes
 
 
+def get_point_intersection_plane_with_sphere(pi_sphere: ndarray, pi_frustum: ndarray, position_sphere: ndarray, radius_sphere: float):
+    """
+    Args:
+        pi_sphere (ndarray): _description_
+        pi_frustum (ndarray): _description_
+        position_sphere (ndarray): _description_
+        radius_sphere (float): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    parametric_equation = get_line_of_intersection_two_planes(pi_sphere, pi_frustum)
+
+    # p1 and p2
+    intersection_points = get_intersection_points_line_sphere(parametric_equation, (*position_sphere, radius_sphere))
+
+    intersection1 = plane_with_circle_intersection(pi_sphere, [*position_sphere, radius_sphere])
+    intersection2 = plane_with_circle_intersection(pi_frustum, [*position_sphere, radius_sphere])
+
+    print(f"{position_sphere=}")
+    z_ = position_sphere[2]
+
+    x1 = intersection1[1][0].subs(z, z_)
+    y1 = intersection1[1][1].subs(z, z_)
+    z1 = intersection1[1][2].subs(z, z_)
+
+    # p3
+    print(f"{x1}, {y1}, {z1}")
+
+    x2 = intersection2[1][0].subs(z, z_)
+    y2 = intersection2[1][1].subs(z, z_)
+    z2 = intersection1[1][2].subs(z, z_)
+
+    # p3
+    print(f"{x2}, {y2}, {z2}")
+
+    return intersection_points
+
+
 def get_viewed_area():
     # Create some sample meshes
     pos_mesh = np.array([0, 0, 0])
     r_mesh = 2
 
-    cam_pos = (5.1, 0.0, 0.0)
+    cam_pos = (2.9, -0.1, 0.0)
     sphe_direction = np.array(cam_pos) - pos_mesh
     mesh = pv.Sphere(radius=r_mesh, center=pos_mesh, direction=sphe_direction, phi_resolution=10, end_phi=90)
     mesh1 = pv.Box(bounds=(-5.0, -4.0, -1.0, 1.0, -1.0, 1.0))
@@ -256,7 +296,7 @@ def get_viewed_area():
     plotter = pv.Plotter()
 
     cy_direction = np.array([0, 0, 1])
-    cy_hight = 0.875
+    cy_hight = 0.4
     n_resolution = 36
 
     # Calculate the length of the lateral surface of an inscribed cylinder
@@ -280,8 +320,8 @@ def get_viewed_area():
     # cylinder.plot(show_edges=True)
     # Add the meshes to the plotter
     # plotter.add_mesh(mesh1)
-    plotter.add_mesh(mesh, show_edges=True)
-    # plotter.add_mesh(cylinder, show_edges=True)
+    # plotter.add_mesh(mesh, show_edges=True)
+    plotter.add_mesh(cylinder, show_edges=True)
 
     # Set camera position and orientation (optional)
     plotter.camera.clipping_range = (1e-4, 1)
@@ -293,7 +333,7 @@ def get_viewed_area():
 
     # Get the camera's view frustum
     frustum = plotter.camera.view_frustum()
-    # plotter.add_mesh(frustum, style="wireframe")
+    plotter.add_mesh(frustum, style="wireframe")
 
     # Generate a plane
     direction = np.array(plotter.camera.focal_point) - np.array(plotter.camera.position)
@@ -312,15 +352,19 @@ def get_viewed_area():
         a, b, c = plane[0]
         d = -(plane[0] @ plane[1])
         plane_eq.append([a, b, c, d])
-        plot_plane(plotter, *plane)
+        # plot_plane(plotter, *plane)
 
-
+    # plot_plane(plotter, *plane_frustum[2])
     # Calculate the intersection between the planes of the frustum
     parametric_equation = []
-    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[0], plane_eq[2]))  #  above_plane with left_plane
-    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[0], plane_eq[3]))  #  above_plane with right_plane
-    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[1], plane_eq[2]))  #  bellow_plane with left_plane
-    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[1], plane_eq[3]))  #  bellow_plane with right_plane
+    # above_plane with left_plane
+    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[0], plane_eq[2]))
+    # above_plane with right_plane
+    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[0], plane_eq[3]))
+    # bellow_plane with left_plane
+    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[1], plane_eq[2]))
+    # bellow_plane with right_plane
+    parametric_equation.append(get_line_of_intersection_two_planes(plane_eq[1], plane_eq[3]))
 
     t1 = -3
     t2 = -7
@@ -337,7 +381,7 @@ def get_viewed_area():
         z2 = float(line[2].subs(t, v[1]))
 
         mesh_line = pv.Line([x1, y1, z1], [x2, y2, z2])
-        plotter.add_mesh(mesh_line, color="k")
+        # plotter.add_mesh(mesh_line, color="k")
 
     # Select the points that pass through the sphere closest to the camera
     intersection_points = []
@@ -348,7 +392,7 @@ def get_viewed_area():
         d2 = np.linalg.norm(intersection_points_sphere[1] - cam_pos)
 
         p = intersection_points_sphere[0] if d1 < d2 else intersection_points_sphere[1]
-        plotter.add_points(p, color="green", point_size=10)
+        # plotter.add_points(p, color="green", point_size=10)
         intersection_points.append(p)
 
     # Separate the points into two sets of points furthest away
@@ -370,17 +414,22 @@ def get_viewed_area():
     spherical_points = np.row_stack((A_set_point, B_set_point))
     spherical_polygon = SphericalPolygon(spherical_points)
     spherical_area = spherical_polygon.area()
-    print(f'{spherical_area=}')
+    print(f"{spherical_area=}")
     # Calculate the area of the sphere using 3 points
     sub_area = 0.0
     for p in A_set_point[:2]:
         sub_area += spherical_triangle_area(p, *B_set_point[:2])
-    print(f'{sub_area=}')
+    print(f"{sub_area=}")
 
     # plot_plane(plotter, direction, dot_plane)
 
     area_spheres = 0.0
 
+    #### delete
+    dist: float = np.inf
+    best_plane = None
+    best_pos = None
+    ####
     # Create the hemispheres and add them to the faces of the cylinder
     for cell in get_geometric_objects_cell(cylinder):
         pos_cell = cell.center
@@ -388,9 +437,21 @@ def get_viewed_area():
         norm_vec = find_normal_vector(*points_cell)
 
         sub_mesh = pv.Sphere(radius=spheres_radius, center=pos_cell, direction=norm_vec, phi_resolution=10, end_phi=90)
-        # plotter.add_mesh(sub_mesh, show_edges=True)
+        plotter.add_mesh(sub_mesh, show_edges=True)
 
-        area_spheres += compute_area_normal_hemisphere(pos_cell, dot_plane, direction, norm_vec, spheres_radius)
+        # area_spheres += compute_area_normal_hemisphere(pos_cell, dot_plane, direction, norm_vec, spheres_radius)
+
+        #### delete
+        d = np.linalg.norm(np.array(pos_cell) - np.array(cam_pos))
+        if d < dist:
+            dist = d
+            best_pos = pos_cell
+            a, b, c = norm_vec
+            d = -(norm_vec @ np.array(pos_cell))
+            best_plane = [a, b, c, d]
+        ####
+
+    points = get_point_intersection_plane_with_sphere(best_plane, plane_eq[2], best_pos, spheres_radius)
 
     # area_spheres = compute_area_normal_hemisphere(pos_mesh, dot_plane, direction, sphe_direction, r_mesh)
     print(f"{area_spheres=}")
@@ -515,7 +576,7 @@ def get_intersection_points_line_sphere(line_parametric_eq, sphere_eq):
             z_inter = z_expr.subs(t, sol)
             intersection_points = np.row_stack((intersection_points, (float(x_inter), float(y_inter), float(z_inter))))
     except TypeError:
-        return []
+        return np.array([])
 
     return intersection_points
 
@@ -575,6 +636,25 @@ def plane_circle_intersection(plane_eq, circle):
     intersection_points_ci = projected_circle.intersection(plane)
 
     return intersection_points_ci
+
+
+def plane_with_circle_intersection(plane_eq, circle_eq):
+    """
+    Args:
+        plane_eq (array_like): ax + by + cy + d = 0
+        circle_eq (array_like): (x - cx)^2 + (y - cy)^2 + (z - cz)^2 = r^2
+
+    """
+    # Extract components of the plane equation
+    a, b, c, d = plane_eq
+    cx, cy, cz, r = circle_eq
+
+    plane = a * x + b * y + c * z + d
+    sphere = (x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2 - r**2
+
+    solution = solve((plane, sphere), (x, y, z))
+
+    return solution
 
 
 def get_viewed_area_from():

@@ -243,7 +243,25 @@ def get_plane_frustum(frustum: pv.PolyData) -> list[tuple[ndarray, ndarray]]:
     return planes
 
 
-def get_point_intersection_plane_with_sphere(pi_sphere: ndarray, pi_frustum: ndarray, position_sphere: ndarray, radius_sphere: float):
+def get_close_intersection_points(intersection, camera_position, value):
+
+    x0 = float(intersection[0][0].subs(z, value))
+    y0 = float(intersection[0][1].subs(z, value))
+    z0 = float(intersection[0][2].subs(z, value))
+
+    x1 = float(intersection[1][0].subs(z, value))
+    y1 = float(intersection[1][1].subs(z, value))
+    z1 = float(intersection[1][2].subs(z, value))
+
+    d0 = np.linalg.norm(np.array([x0, y0, z0]) - np.array(camera_position))
+    d1 = np.linalg.norm(np.array([x1, y1, z1]) - np.array(camera_position))
+
+    return np.array([x0, y0, z0]) if d0 < d1 else np.array([x1, y1, z1])
+
+
+def get_point_intersection_plane_with_sphere(
+    pi_sphere: ndarray, pi_frustum: ndarray, position_sphere: ndarray, camera_position: ndarray, radius_sphere: float
+) -> list[ndarray]:
     """
     Args:
         pi_sphere (ndarray): _description_
@@ -256,28 +274,16 @@ def get_point_intersection_plane_with_sphere(pi_sphere: ndarray, pi_frustum: nda
     """
     parametric_equation = get_line_of_intersection_two_planes(pi_sphere, pi_frustum)
 
-    # p1 and p2
-    intersection_points = get_intersection_points_line_sphere(parametric_equation, (*position_sphere, radius_sphere))
+    intersection_points = []
+    points = get_intersection_points_line_sphere(parametric_equation, (*position_sphere, radius_sphere))
+    intersection_points = [p for p in points]
 
     intersection1 = plane_with_circle_intersection(pi_sphere, [*position_sphere, radius_sphere])
     intersection2 = plane_with_circle_intersection(pi_frustum, [*position_sphere, radius_sphere])
 
-    print(f"{position_sphere=}")
-    z_ = position_sphere[2]
-
-    x1 = intersection1[1][0].subs(z, z_)
-    y1 = intersection1[1][1].subs(z, z_)
-    z1 = intersection1[1][2].subs(z, z_)
-
-    # p3
-    print(f"{x1}, {y1}, {z1}")
-
-    x2 = intersection2[1][0].subs(z, z_)
-    y2 = intersection2[1][1].subs(z, z_)
-    z2 = intersection1[1][2].subs(z, z_)
-
-    # p3
-    print(f"{x2}, {y2}, {z2}")
+    dz = position_sphere[2]
+    intersection_points.append(get_close_intersection_points(intersection1, camera_position, dz))
+    intersection_points.append(get_close_intersection_points(intersection2, camera_position, dz))
 
     return intersection_points
 
@@ -451,7 +457,9 @@ def get_viewed_area():
             best_plane = [a, b, c, d]
         ####
 
-    points = get_point_intersection_plane_with_sphere(best_plane, plane_eq[2], best_pos, spheres_radius)
+    points = get_point_intersection_plane_with_sphere(
+        best_plane, plane_eq[2], best_pos, np.array(cam_pos), spheres_radius
+    )
 
     # area_spheres = compute_area_normal_hemisphere(pos_mesh, dot_plane, direction, sphe_direction, r_mesh)
     print(f"{area_spheres=}")
